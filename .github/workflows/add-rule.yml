@@ -1,4 +1,4 @@
-name: daily-commit
+name: Add rule
 
 on:
   schedule:
