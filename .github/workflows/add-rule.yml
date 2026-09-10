@@ -59,7 +59,7 @@ jobs:
 
         echo "${RULE}" >> rule.md
 
-        git add role.md
+        git add rule.md
         git commit -m "$msg"
 
         for attempt in 1 2 3; do
