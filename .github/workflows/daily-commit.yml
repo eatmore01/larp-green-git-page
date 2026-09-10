@@ -1,0 +1,80 @@
+name: daily-commit
+
+on:
+  schedule:
+  - cron: '17 1,5,9,13,17,21 * * *'
+  workflow_dispatch:
+
+permissions: {}
+
+concurrency:
+  group: daily-commit
+  cancel-in-progress: false
+
+jobs:
+  commit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    env:
+      GH_PAT: ${{ secrets.GH_PAT }}
+      EMAIL: ${{ secrets.COMMIT_EMAIL }}
+      TARGET_BRANCH: ${{ github.event.repository.default_branch }}
+      RULE: "трахать нужно скромниц"
+    steps:
+    - name: Configure git credentials
+      run: |
+        set -euo pipefail
+
+        if [ -z "${GH_PAT}" ]; then
+          echo "secret GH_PAT is not set" >&2
+          exit 1
+        fi
+
+        git config --global credential.helper store
+        git config --global user.name "etm"
+        git config --global user.email "${EMAIL}"
+
+        umask 077
+        printf 'https://x-access-token:%s@github.com\n' "${GH_PAT}" > "${HOME}/.git-credentials"
+
+    - name: Clone repository
+      run: |
+        set -euo pipefail
+        git clone --branch "${TARGET_BRANCH}" \
+          "https://github.com/${GITHUB_REPOSITORY}.git" work
+
+    - name: Append line, commit and push
+      working-directory: work
+      run: |
+        set -euo pipefail
+
+
+        messages=(
+          "ԼᵒVᵉԼ𝑦"
+          "\\⠀⠀. ТелоЭтойБляди. ..⠀⠀⠀...Онемело.⠀⠀⠀ОоххХ"
+          "∂ɣಎᏘ Ꮑℯτuτ"
+        )
+
+        msg="${messages[$((RANDOM % ${#messages[@]}))]}"
+
+        echo "${RULE}" >> rule.md
+
+        git add role.md
+        git commit -m "$msg"
+
+        for attempt in 1 2 3; do
+          if git push origin "HEAD:${TARGET_BRANCH}"; then
+            exit 0
+          fi
+          echo "push failed (attempt ${attempt}), rebasing" >&2
+          git fetch origin "${TARGET_BRANCH}"
+          git rebase "origin/${TARGET_BRANCH}"
+          sleep $((attempt * 5))
+        done
+
+        echo "push failed after 3 attempts" >&2
+        exit 1
+
+    - name: Remove credentials
+      if: always()
+      run: rm -f "${HOME}/.git-credentials"
